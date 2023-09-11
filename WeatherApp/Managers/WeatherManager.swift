@@ -15,12 +15,11 @@ class WeatherManager {
     
     var ref: DatabaseReference!
     
-    
-    func getCurrentWeather(latitude: CLLocationDegrees, longitude: CLLocationDegrees) async throws -> ResponseBody {
+    func getCurrentWeather(latitude: CLLocationDegrees, longitude: CLLocationDegrees) async throws -> ResponseBody? {
         guard let url = URL(string: "https://api.openweathermap.org/data/2.5/weather?lat=\(latitude)&lon=\(longitude)&appid=\("8437f927f15af6bfbe99eec87023d0c1")&units=imperial") else { fatalError("Missing URL")}
         
         let urlRequest = URLRequest(url: url)
-                
+        
         let (data, response) = try await URLSession.shared.data(for: urlRequest)
         
         let jsonData = data
@@ -35,20 +34,40 @@ class WeatherManager {
         
         let responseBody = try decoder.decode(ResponseBody.self, from: jsonData)
         
-        // Save responseBody to Firebase
+        // Use auto-generated child key for new entry
+        let newEntryRef = ref.child("weather_data").childByAutoId()
+        
         do {
             let weatherData = try JSONEncoder().encode(responseBody)
             if let weatherDataJSON = try? JSONSerialization.jsonObject(with: weatherData, options: []) {
-                try await self.ref.child("weather_data").setValueAsync(weatherDataJSON)
+                try await newEntryRef.setValueAsync(weatherDataJSON)
                 print("Weather data saved successfully!")
             }
         } catch {
             print("Weather data could not be saved: \(error).")
         }
         
-        return responseBody
+        // Retrieve the last entry from Firebase
+        let lastEntry = try await withCheckedThrowingContinuation { continuation in
+            ref.child("weather_data").queryLimited(toLast: 1).observeSingleEvent(of: .value) { snapshot in
+                if snapshot.exists(), let children = snapshot.children.allObjects as? [DataSnapshot], let lastDataSnapshot = children.last, let lastEntryValue = lastDataSnapshot.value {
+                    do {
+                        let data = try JSONSerialization.data(withJSONObject: lastEntryValue, options: [])
+                        let lastEntryDecoded = try JSONDecoder().decode(ResponseBody.self, from: data)
+                        continuation.resume(returning: lastEntryDecoded)
+                    } catch {
+                        continuation.resume(throwing: error)
+                    }
+                } else {
+                    continuation.resume(throwing: NSError(domain: "WeatherManager", code: -1, userInfo: ["description": "No last entry found"]))
+                }
+            }
+        }
+        
+        return lastEntry
     }
 }
+
 
 // Model of the response body we get from calling the OpenWeather API
 struct ResponseBody: Codable {
