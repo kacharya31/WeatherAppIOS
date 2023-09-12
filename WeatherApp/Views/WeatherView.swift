@@ -91,6 +91,8 @@ struct AdditionalClimateData: View {
             InfoRow(icon: "thermometer", label: "High Temp", value: "\(weather.main.tempMax.roundDouble())°")
             InfoRow(icon: "wind", label: "Wind Speed", value: "\(weather.wind.speed.roundDouble()) m/s")
             InfoRow(icon: "drop.fill", label: "Humidity", value: "\(weather.main.humidity.roundDouble())%")
+            InfoRow(icon: "barometer", label: "Pressure", value: "\(weather.main.pressure.roundDouble()) hPa")
+            InfoRow(icon: "sun.min.fill", label: "Feels Like", value: "\(weather.main.feelsLike.roundDouble())°")
         }
         .padding()
         .background(Color.white.opacity(0.1))
