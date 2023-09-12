@@ -60,7 +60,7 @@ struct MainClimateInfo: View {
         HStack {
             Image(systemName: "cloud.fill")
                 .resizable()
-                .frame(width: 50, height: 50)
+                .frame(width: 75, height: 50)
                 .foregroundColor(.white)
             
             Text("\(weather.weather[0].main)")
